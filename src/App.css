@@ -1,7 +1,11 @@
 .ant-table {
+  --col_hover: "";
   .ant-table-tbody {
     .ant-table-cell {
       transition: none;
+    }
+    .ant-table-cell[col_hover="var(--col_hover)"] {
+      background-color: #8df !important;
     }
     .ant-table-cell:hover {
       z-index: 999 !important;
@@ -23,4 +27,8 @@
   > tr
   > .ant-table-cell.ant-table-cell-row-hover {
   background-color: #e8f1ff !important;
+}
+
+.hover {
+  background-color: red !important;
 }

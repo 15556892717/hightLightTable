@@ -94,7 +94,7 @@ export default function App() {
     },
   ]);
   const data = [];
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 500; i++) {
     data.push({
       key: i,
       name: "John Brown",

@@ -1,6 +1,15 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  useEffect,
+} from "react";
 import styles from "./App.css";
 import { Table, Button } from "antd";
+import { unparse } from "papaparse";
+import { getClosest } from "./utilss";
+import styled from "styled-components";
 
 const HighlightTable = (props) => {
   const { hoverColor, columns = [], ...res } = props;
@@ -30,39 +39,52 @@ const HighlightTable = (props) => {
     }
     return null;
   }
-  const handleMouseEnter = (column) => {
+  const handleMouseEnter = (column, e) => {
+    // console.log(e, "111111");
+    e.target.classList.add("hover");
+    // console.log(e.target.classList, "e.target.classList");
+    // console.log(123, column);
     setHighlightedColumn(column);
     const parentColumn = getAllParentColumns(column); // 获取当前列的父级列
     setHighlightedParentColumns(parentColumn);
   };
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = (e) => {
+    e.target.classList.remove("hover");
     setHighlightedColumn(null);
     setHighlightedParentColumns(null);
   };
 
   function addPropToTreeData(data) {
     return data.map((item) => {
+      // const className =
+      //   highlightedColumn === item?.dataIndex ? `col_hover` : "";
+      // if (!item?.onCell) {
+      //   console.log(item, "item");
       item.onCell = () => {
         return {
-          onMouseEnter: () => handleMouseEnter(item.dataIndex),
-          onMouseLeave: handleMouseLeave,
-          className: highlightedColumn === item?.dataIndex ? `col_hover` : "",
+          // onMouseEnter: (e) => handleMouseEnter(item.dataIndex, e),
+          // onMouseLeave: handleMouseLeave,
+          // className: className,
+          col_hover: item.dataIndex,
         };
+        // };
       };
-
-      item.onHeaderCell = (column) => {
-        return {
-          onMouseEnter: () => handleMouseEnter(column.dataIndex),
-          onMouseLeave: handleMouseLeave,
-          style: {
-            [highlightedColumn === item.dataIndex ||
-            highlightedParentColumns?.includes(item.dataIndex)
-              ? "background"
-              : ""]: "#e8f1ff",
-          },
+      // const style = {
+      //   [highlightedColumn === item.dataIndex ||
+      //   highlightedParentColumns?.includes(item.dataIndex)
+      //     ? "background"
+      //     : ""]: "#e8f1ff",
+      // };
+      if (!item?.onHeaderCell) {
+        item.onHeaderCell = (column) => {
+          return {
+            // onMouseEnter: (e) => handleMouseEnter(column.dataIndex, e),
+            // onMouseLeave: handleMouseLeave,
+            // style: style,
+          };
         };
-      };
+      }
 
       // 如果当前项有子项，则递归调用函数
       if (item.children && item.children.length > 0) {
@@ -197,13 +219,93 @@ const HighlightTable = (props) => {
     }
   };
 
+  const handleDownloadCSV = React.useCallback(() => {
+    const dataSource = res.dataSource;
+    if (!dataSource) {
+      return;
+    }
+
+    const data = dataSource;
+
+    console.log("data:", data);
+    const csv = unparse(data, {
+      skipEmptyLines: "greedy",
+      header: true,
+      ...{},
+    });
+    console.log(csv, "csv");
+    const blob = new Blob([csv]);
+    const a = window.document.createElement("a");
+    a.href = window.URL.createObjectURL(blob);
+    a.download = `${false || "table"}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [res]);
+  const preCellRef = useRef(null);
+  const [colHoverKey, setHoverKey] = useState("");
+  const findEventTarget = (e) => {
+    const target = getClosest(e.target, `td.ant-table-cell`);
+    const colIndex = target && target.getAttribute("col_hover");
+    const cells = document.querySelectorAll(
+      `td.ant-table-cell[col_hover=${colIndex}]`
+    );
+    cells.forEach((cell) => {
+      cell.classList.add("col_hover");
+    });
+    // setHoverKey(colIndex);
+
+    try {
+      // in case of finding an unmounted component due to cached data
+      // need to clear refs of this.tableInc when dataSource Changed
+      // in virtual table
+      return {
+        colIndex,
+      };
+    } catch (error) {
+      return {};
+    }
+
+    return {};
+  };
+
+  useEffect(() => {
+    const table = document.querySelector(".ant-table-tbody");
+    table.addEventListener("mouseover", (e) => {
+      const cells = document.querySelectorAll(`td.ant-table-cell`);
+      cells.forEach((cell) => {
+        cell.classList.remove("col_hover");
+      });
+      // console.log(e, "table");
+      preCellRef.current = getClosest(e.target, `td.ant-table-cell`);
+      findEventTarget(e);
+    });
+    return () => {};
+  }, []);
+  // console.log(colHoverKey, "colHoverKey");
+
   return (
-    <Table
-      dataSource={res?.dataSource}
-      columns={customColumns}
-      bordered
-      {...res}
-    />
+    <>
+      <button
+        onClick={() => {
+          handleDownloadCSV();
+        }}
+      >
+        anniu{" "}
+      </button>
+      <Table
+        style={{
+          "--col_hover": colHoverKey,
+        }}
+        dataSource={res?.dataSource}
+        columns={customColumns}
+        pagination={false}
+        colHoverKey={colHoverKey}
+        bordered
+        {...res}
+      ></Table>
+      {/* <Table /> */}
+    </>
   );
 };
 
